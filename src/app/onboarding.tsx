@@ -6,6 +6,7 @@ import { SportColor, Spacing, useColors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
+import { SPORTS, sportLabel } from '@/lib/sports';
 import type { Role, Sport } from '@/lib/types';
 
 type ProgramOption = { id: string; school_name: string; sport: Sport };
@@ -24,20 +25,24 @@ function SportTile({ sport, label, line, selected, onPress }: { sport: Sport; la
         styles.tile,
         { backgroundColor: SportColor[sport], borderColor: selected ? c.ball : 'transparent', transform: [{ scale: pressed ? 0.98 : 1 }] },
       ]}>
-      {/* Court or pitch markings */}
-      {sport === 'tennis' ? (
+      {/* Court, pitch, course or pool markings */}
+      {sport === 'tennis' && (
         <>
           <View style={[styles.mark, { left: '50%', top: 0, bottom: 0, width: 2 }]} />
           <View style={[styles.mark, { top: '50%', left: 0, right: 0, height: 2 }]} />
           <View style={[styles.mark, { left: '14%', top: 0, bottom: 0, width: 2 }]} />
           <View style={[styles.mark, { right: '14%', top: 0, bottom: 0, width: 2 }]} />
         </>
-      ) : (
+      )}
+      {(sport === 'soccer' || sport === 'basketball') && (
         <>
           <View style={[styles.mark, { left: '50%', top: 0, bottom: 0, width: 2 }]} />
-          <View style={[styles.circle]} />
+          <View style={styles.circle} />
         </>
       )}
+      {sport === 'golf' && <View style={[styles.circle, { left: '78%', width: 60, height: 60, marginLeft: -30, marginTop: -30 }]} />}
+      {sport === 'swimming' &&
+        [20, 40, 60, 80].map((top) => <View key={top} style={[styles.mark, { top: `${top}%`, left: 0, right: 0, height: 2 }]} />)}
       <Text style={styles.tileTitle}>{label}</Text>
       <Text style={styles.tileLine}>{line}</Text>
       {selected && (
@@ -60,6 +65,11 @@ export default function Onboarding() {
   const [gradYear, setGradYear] = useState<string | null>(null);
   const [position, setPosition] = useState('');
   const [utr, setUtr] = useState('');
+  const [scoringAvg, setScoringAvg] = useState('');
+  const [mainEvent, setMainEvent] = useState('');
+  const [bestTime, setBestTime] = useState('');
+  const [ppg, setPpg] = useState('');
+  const [height, setHeight] = useState('');
   const [gpa, setGpa] = useState('');
   const [bio, setBio] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -96,7 +106,20 @@ export default function Onboarding() {
       p_country: country.trim() || null,
       p_athlete:
         role === 'athlete'
-          ? { sport, grad_year: gradYear, playing_position: position, utr, gpa, bio, video_url: videoUrl }
+          ? {
+              sport,
+              grad_year: gradYear,
+              playing_position: position,
+              utr,
+              scoring_avg: scoringAvg,
+              main_event: mainEvent,
+              best_time: bestTime,
+              points_per_game: ppg,
+              height_cm: height,
+              gpa,
+              bio,
+              video_url: videoUrl,
+            }
           : null,
       p_coach: role === 'coach' ? { program_id: programId, title } : null,
     });
@@ -113,13 +136,14 @@ export default function Onboarding() {
             <Text style={styles.stepLabel}>Step 1 of 2</Text>
             <Title style={{ fontSize: 32 }}>Which sport?</Title>
             <Body muted>You'll only see schools and athletes in this sport.</Body>
-            <SportTile sport="tennis" label="Tennis" line="Matched by UTR and GPA" selected={sport === 'tennis'} onPress={() => setSport('tennis')} />
-            <SportTile sport="soccer" label="Soccer" line="Matched by position and GPA" selected={sport === 'soccer'} onPress={() => setSport('soccer')} />
+            {SPORTS.map((s) => (
+              <SportTile key={s.id} sport={s.id} label={s.label} line={s.line} selected={sport === s.id} onPress={() => setSport(s.id)} />
+            ))}
             <Button title="Continue" onPress={() => setStep('details')} disabled={!sport} />
           </ScrollView>
         ) : (
         <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-          <Text style={styles.stepLabel}>Step 2 of 2 · {sport === 'tennis' ? 'Tennis' : 'Soccer'}</Text>
+          <Text style={styles.stepLabel}>Step 2 of 2 · {sport ? sportLabel(sport) : ''}</Text>
           <Title>Set up your profile</Title>
           <Choice
             label="I am"
@@ -155,8 +179,23 @@ export default function Onboarding() {
               {sport === 'tennis' && (
                 <Field label="UTR rating" value={utr} onChangeText={setUtr} keyboardType="decimal-pad" placeholder="10.5" />
               )}
-              {sport === 'soccer' && (
-                <Field label="Position" value={position} onChangeText={setPosition} placeholder="Left winger" />
+              {(sport === 'soccer' || sport === 'basketball') && (
+                <Field label="Position" value={position} onChangeText={setPosition} placeholder={sport === 'soccer' ? 'Left winger' : 'Point guard'} />
+              )}
+              {sport === 'basketball' && (
+                <Field label="Points per game" value={ppg} onChangeText={setPpg} keyboardType="decimal-pad" placeholder="14.5" />
+              )}
+              {sport === 'golf' && (
+                <Field label="18-hole scoring average" value={scoringAvg} onChangeText={setScoringAvg} keyboardType="decimal-pad" placeholder="73.5" />
+              )}
+              {sport === 'swimming' && (
+                <>
+                  <Field label="Main event" value={mainEvent} onChangeText={setMainEvent} placeholder="100 free" />
+                  <Field label="Best time" value={bestTime} onChangeText={setBestTime} placeholder="52.80" />
+                </>
+              )}
+              {(sport === 'basketball' || sport === 'swimming') && (
+                <Field label="Height in cm (optional)" value={height} onChangeText={setHeight} keyboardType="number-pad" placeholder="185" />
               )}
               <Field label="GPA (US scale, optional)" value={gpa} onChangeText={setGpa} keyboardType="decimal-pad" placeholder="3.5" />
               <Field label="Highlight video link (optional)" value={videoUrl} onChangeText={setVideoUrl} autoCapitalize="none" placeholder="https://" />
@@ -195,13 +234,13 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
   wrap: { padding: Spacing.xl, gap: Spacing.lg, maxWidth: 560, width: '100%', alignSelf: 'center' },
   stepLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: '#8a9a92' },
-  tile: { height: 150, borderRadius: 22, borderWidth: 3, padding: Spacing.lg, justifyContent: 'flex-end', overflow: 'hidden' },
+  tile: { height: 104, borderRadius: 22, borderWidth: 3, padding: Spacing.lg, justifyContent: 'flex-end', overflow: 'hidden' },
   mark: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.22)' },
   circle: {
     position: 'absolute', left: '50%', top: '50%', width: 90, height: 90, marginLeft: -45, marginTop: -45,
     borderRadius: 45, borderWidth: 2, borderColor: 'rgba(255,255,255,0.22)',
   },
-  tileTitle: { color: '#fff', fontSize: 30, fontWeight: '800', letterSpacing: -0.5 },
+  tileTitle: { color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
   tileLine: { color: '#fff', opacity: 0.9, fontSize: 14 },
   check: { position: 'absolute', top: 14, right: 14, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
 });

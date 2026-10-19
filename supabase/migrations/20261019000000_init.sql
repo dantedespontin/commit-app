@@ -6,7 +6,7 @@
 create extension if not exists pgcrypto;
 
 create type public.user_role as enum ('athlete', 'coach', 'parent');
-create type public.sport as enum ('tennis', 'soccer');
+create type public.sport as enum ('tennis', 'soccer', 'basketball', 'golf', 'swimming');
 
 -- ---------------------------------------------------------------------------
 -- Tables
@@ -28,7 +28,11 @@ create table public.athletes (
   sport public.sport not null,
   grad_year int not null check (grad_year between 2024 and 2040),
   playing_position text check (char_length(playing_position) <= 40),
-  utr numeric(4, 2) check (utr between 1 and 16.5),
+  utr numeric(4, 2) check (utr between 1 and 16.5),                  -- tennis
+  scoring_avg numeric(4, 1) check (scoring_avg between 60 and 120), -- golf, 18-hole average
+  main_event text check (char_length(main_event) <= 40),            -- swimming, e.g. 100 free
+  best_time text check (char_length(best_time) <= 12),              -- swimming, e.g. 52.80
+  points_per_game numeric(4, 1) check (points_per_game between 0 and 80), -- basketball
   gpa numeric(3, 2) check (gpa between 0 and 5),
   height_cm int check (height_cm between 120 and 230),
   bio text check (char_length(bio) <= 500),
@@ -49,7 +53,8 @@ create table public.programs (
   about text check (char_length(about) <= 300),
   scholarship text,
   min_gpa numeric(3, 2),
-  min_utr numeric(4, 2),
+  min_utr numeric(4, 2),          -- tennis
+  max_scoring_avg numeric(4, 1),  -- golf: highest 18-hole average the program recruits
   -- Yearly tuition, housing and fees in USD, and the most athletic aid the program usually gives.
   cost_of_attendance int check (cost_of_attendance > 0),
   max_athletic_pct int not null default 100 check (max_athletic_pct between 0 and 100),
@@ -84,7 +89,13 @@ insert into public.contact_rules (division, sport, years_before_grad, unlock_mon
   ('NCAA D1', 'tennis', 2, 6, 15),
   ('NCAA D1', 'soccer', 2, 6, 15),
   ('NCAA D2', 'tennis', 2, 6, 15),
-  ('NCAA D2', 'soccer', 2, 6, 15);
+  ('NCAA D2', 'soccer', 2, 6, 15),
+  ('NCAA D1', 'basketball', 2, 6, 15),
+  ('NCAA D2', 'basketball', 2, 6, 15),
+  ('NCAA D1', 'golf', 2, 6, 15),
+  ('NCAA D2', 'golf', 2, 6, 15),
+  ('NCAA D1', 'swimming', 2, 6, 15),
+  ('NCAA D2', 'swimming', 2, 6, 15);
 
 create table public.swipes (
   swiper_id uuid not null references public.profiles on delete cascade,
@@ -133,28 +144,32 @@ returns int language sql immutable as $$
 $$;
 
 -- Rough yearly cost to an athlete after aid, in USD, as a low-high range.
--- Tennis: athletic aid grows with how far the athlete's UTR is above the program's minimum
--- (25% at the minimum, +25% per full UTR point, up to the program's cap). Soccer has no
--- comparable rating, so the range runs from full athletic aid to none.
+-- Tennis and golf: athletic aid grows with how far the athlete beats the program's bar
+-- (25% at the bar, +25% per full UTR point above it or per stroke under it, up to the program's
+-- cap). Other sports have no single comparable rating, so the range runs from full aid to none.
 -- Academic merit aid: 20% off the rest for GPA 3.8+, 10% for 3.5+ (not at junior colleges).
 -- This is an estimate to help athletes compare schools, not an offer.
 create function public.estimate_cost(p_program uuid, p_athlete uuid)
 returns table (cost_low int, cost_high int) language sql stable security definer set search_path = public as $$
   with x as (
-    select pr.cost_of_attendance as coa, pr.max_athletic_pct as cap, pr.division, pr.sport, pr.min_utr, a.utr, a.gpa
+    select pr.cost_of_attendance as coa, pr.max_athletic_pct as cap, pr.division, pr.sport, a.gpa,
+           -- How far past the program's bar the athlete is; null when the sport has no bar.
+           case
+             when pr.sport = 'tennis' and a.utr is not null then a.utr - coalesce(pr.min_utr, a.utr)
+             when pr.sport = 'golf' and a.scoring_avg is not null then coalesce(pr.max_scoring_avg, a.scoring_avg) - a.scoring_avg
+           end as margin,
+           pr.sport in ('tennis', 'golf') as rated
       from programs pr, athletes a
      where pr.id = p_program and a.user_id = p_athlete and pr.cost_of_attendance is not null
   ), aid as (
     select coa, division,
            case
-             when sport = 'tennis' and utr is not null and utr >= coalesce(min_utr, 0)
-               then least(cap, 25 + 25 * floor(utr - coalesce(min_utr, utr))::int)
-             when sport = 'tennis' then 0
+             when rated and margin >= 0 then least(cap, 25 + 25 * floor(margin)::int)
+             when rated then 0
              else cap
            end as best_pct,
            case
-             when sport = 'tennis' and utr is not null and utr >= coalesce(min_utr, 0)
-               then greatest(0, least(cap, 25 + 25 * floor(utr - coalesce(min_utr, utr))::int) - 25)
+             when rated and margin >= 0 then greatest(0, least(cap, 25 + 25 * floor(margin)::int) - 25)
              else 0
            end as worst_pct,
            case when division = 'NJCAA' then 0 when gpa >= 3.8 then 20 when gpa >= 3.5 then 10 else 0 end as merit_pct
@@ -224,7 +239,7 @@ create policy "read own or child athlete" on public.athletes for select
   using (user_id = auth.uid() or parent_id = auth.uid());
 create policy "update own athlete" on public.athletes for update using (user_id = auth.uid());
 revoke update on public.athletes from authenticated, anon;
-grant update (playing_position, utr, gpa, height_cm, bio, video_url) on public.athletes to authenticated;
+grant update (playing_position, utr, scoring_avg, main_event, best_time, points_per_game, gpa, height_cm, bio, video_url) on public.athletes to authenticated;
 
 create policy "programs are public" on public.programs for select to authenticated using (true);
 create policy "contact rules are public" on public.contact_rules for select to authenticated using (true);
@@ -268,13 +283,18 @@ begin
   values (v_uid, p_role, p_full_name, p_birth_date, p_country);
 
   if p_role = 'athlete' then
-    insert into athletes (user_id, sport, grad_year, playing_position, utr, gpa, height_cm, bio, video_url, parent_approved)
+    insert into athletes (user_id, sport, grad_year, playing_position, utr, scoring_avg, main_event, best_time,
+                          points_per_game, gpa, height_cm, bio, video_url, parent_approved)
     values (
       v_uid,
       (p_athlete->>'sport')::public.sport,
       (p_athlete->>'grad_year')::int,
       nullif(p_athlete->>'playing_position', ''),
       nullif(p_athlete->>'utr', '')::numeric,
+      nullif(p_athlete->>'scoring_avg', '')::numeric,
+      nullif(p_athlete->>'main_event', ''),
+      nullif(p_athlete->>'best_time', ''),
+      nullif(p_athlete->>'points_per_game', '')::numeric,
       nullif(p_athlete->>'gpa', '')::numeric,
       nullif(p_athlete->>'height_cm', '')::int,
       nullif(p_athlete->>'bio', ''),
@@ -299,11 +319,11 @@ end $$;
 create function public.get_program_deck(p_limit int default 20)
 returns table (
   id uuid, school_name text, division text, conference text, state text, sport public.sport,
-  about text, scholarship text, min_gpa numeric, min_utr numeric, photo_url text,
+  about text, scholarship text, min_gpa numeric, min_utr numeric, max_scoring_avg numeric, photo_url text,
   cost_of_attendance int, cost_low int, cost_high int, liked_you boolean
 ) language sql stable security definer set search_path = public as $$
   select pr.id, pr.school_name, pr.division, pr.conference, pr.state, pr.sport, pr.about, pr.scholarship,
-         pr.min_gpa, pr.min_utr, pr.photo_url, pr.cost_of_attendance, est.cost_low, est.cost_high,
+         pr.min_gpa, pr.min_utr, pr.max_scoring_avg, pr.photo_url, pr.cost_of_attendance, est.cost_low, est.cost_high,
          case when me.plan <> 'starter' then exists (
            select 1 from swipes s where s.athlete_id = a.user_id and s.program_id = pr.id
               and s.direction = 'program_to_athlete' and s.liked)
@@ -323,11 +343,13 @@ $$;
 create function public.get_athlete_deck(p_limit int default 20)
 returns table (
   user_id uuid, full_name text, age int, country text, sport public.sport, grad_year int,
-  playing_position text, utr numeric, gpa numeric, height_cm int, bio text, video_url text,
+  playing_position text, utr numeric, scoring_avg numeric, main_event text, best_time text,
+  points_per_game numeric, gpa numeric, height_cm int, bio text, video_url text,
   contact_unlocks_on date
 ) language sql stable security definer set search_path = public as $$
   select a.user_id, p.full_name, public.age_on(p.birth_date), p.country, a.sport, a.grad_year,
-         a.playing_position, a.utr, a.gpa, a.height_cm, a.bio, a.video_url,
+         a.playing_position, a.utr, a.scoring_avg, a.main_event, a.best_time,
+         a.points_per_game, a.gpa, a.height_cm, a.bio, a.video_url,
          public.contact_unlock_date(a.user_id, pr.id)
     from programs pr
     join athletes a on a.sport = pr.sport

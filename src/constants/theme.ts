@@ -33,6 +33,12 @@ export function useColors(): Palette {
   return Colors[useColorScheme() === 'dark' ? 'dark' : 'light'];
 }
 
-export const SportColor = { tennis: '#c8552c', soccer: '#0d7a52' } as const;
+export const SportColor = {
+  tennis: '#c8552c',
+  soccer: '#0d7a52',
+  basketball: '#d9772b',
+  golf: '#3f7f3a',
+  swimming: '#1f6fae',
+} as const;
 
 export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;

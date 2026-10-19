@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { SportColor, Spacing, useColors } from '@/constants/theme';
 import { formatDate } from '@/lib/errors';
+import { athleteKeyStat, programKeyStat, ratedSport } from '@/lib/sports';
 import type { AthleteCard, Program, Sport } from '@/lib/types';
 
 function Card({
@@ -91,7 +92,7 @@ function CostEstimate({ program }: { program: Program }) {
         <Text style={{ fontSize: 14, fontWeight: '500', color: c.muted }}> a year</Text>
       </Text>
       <Text style={{ color: c.muted, fontSize: 12 }}>
-        Full cost {usd(program.cost_of_attendance!)}. Based on your {program.sport === 'tennis' ? 'UTR and ' : ''}GPA; real offers vary.
+        Full cost {usd(program.cost_of_attendance!)}. Based on your {program.sport === 'tennis' ? 'UTR and ' : program.sport === 'golf' ? 'scoring average and ' : ''}GPA{ratedSport(program.sport) ? '' : ', with athletic aid as a range'}; real offers vary.
       </Text>
     </View>
   );
@@ -107,9 +108,7 @@ export function ProgramCard({ program }: { program: Program }) {
       extra={<CostEstimate program={program} />}
       meta={[program.division, program.conference, `${program.state}, USA`].filter(Boolean).join(' · ')}
       stats={[
-        program.sport === 'tennis'
-          ? [program.min_utr ? `${program.min_utr}+` : 'Any', 'Min UTR']
-          : [program.division.replace('NCAA ', ''), 'Division'],
+        programKeyStat(program),
         [program.min_gpa ? program.min_gpa.toFixed(1) : 'None', 'Min GPA'],
         [program.conference ?? 'n/a', 'Conference'],
       ]}
@@ -128,9 +127,7 @@ export function AthleteProfileCard({ athlete }: { athlete: AthleteCard }) {
       name={athlete.full_name}
       meta={[`${athlete.age}`, athlete.country].filter(Boolean).join(' · ')}
       stats={[
-        athlete.sport === 'tennis'
-          ? [athlete.utr ? String(athlete.utr) : 'n/a', 'UTR']
-          : [athlete.playing_position ?? 'n/a', 'Position'],
+        athleteKeyStat(athlete),
         [String(athlete.grad_year), 'Class'],
         [athlete.gpa ? athlete.gpa.toFixed(1) : 'n/a', 'GPA'],
       ]}

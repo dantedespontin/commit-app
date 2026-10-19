@@ -35,7 +35,7 @@ export default function SignIn() {
           <View style={{ gap: Spacing.sm }}>
             <View style={[styles.ball, { backgroundColor: c.ball }]} />
             <Title style={{ fontSize: 40 }}>Commit</Title>
-            <Body muted>Get recruited by US college tennis and soccer programs, without paying an agent.</Body>
+            <Body muted>Get recruited by US college programs in tennis, soccer, basketball, golf and swimming, without paying an agent.</Body>
           </View>
 
           <View style={{ gap: Spacing.lg }}>

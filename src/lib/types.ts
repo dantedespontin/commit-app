@@ -1,5 +1,5 @@
 export type Role = 'athlete' | 'coach' | 'parent';
-export type Sport = 'tennis' | 'soccer';
+export type Sport = 'tennis' | 'soccer' | 'basketball' | 'golf' | 'swimming';
 
 export type Profile = {
   id: string;
@@ -21,6 +21,7 @@ export type Program = {
   scholarship: string | null;
   min_gpa: number | null;
   min_utr: number | null;
+  max_scoring_avg: number | null;
   photo_url: string | null;
   cost_of_attendance: number | null;
   cost_low: number | null;
@@ -37,6 +38,10 @@ export type AthleteCard = {
   grad_year: number;
   playing_position: string | null;
   utr: number | null;
+  scoring_avg: number | null;
+  main_event: string | null;
+  best_time: string | null;
+  points_per_game: number | null;
   gpa: number | null;
   height_cm: number | null;
   bio: string | null;

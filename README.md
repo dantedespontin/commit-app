@@ -1,6 +1,6 @@
 # Commit
 
-A swipe-to-match recruiting app. Athletes swipe on US college tennis and soccer programs, verified coaches swipe on athletes, and a mutual yes opens a chat.
+A swipe-to-match recruiting app. Athletes swipe on US college tennis, soccer, basketball, golf and swimming programs, verified coaches swipe on athletes, and a mutual yes opens a chat.
 
 ## What's in this version
 
