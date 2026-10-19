@@ -22,6 +22,9 @@ export type Program = {
   min_gpa: number | null;
   min_utr: number | null;
   photo_url: string | null;
+  cost_of_attendance: number | null;
+  cost_low: number | null;
+  cost_high: number | null;
   liked_you: boolean | null;
 };
 

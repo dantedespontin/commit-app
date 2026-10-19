@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SportColor, Spacing, useColors } from '@/constants/theme';
@@ -14,8 +15,10 @@ function Card({
   text,
   flag,
   photo,
+  extra,
 }: {
   photo?: string | null;
+  extra?: ReactNode;
   sport: Sport;
   initials: string;
   name: string;
@@ -50,6 +53,7 @@ function Card({
             </View>
           ))}
         </View>
+        {extra}
         {text ? <Text style={{ color: c.muted, fontSize: 15, lineHeight: 21 }}>{text}</Text> : null}
         {flag && (
           <Text
@@ -73,6 +77,26 @@ const initialsOf = (name: string) =>
     .map((w) => w[0])
     .join('');
 
+const usd = (n: number) => '$' + n.toLocaleString('en-US');
+
+function CostEstimate({ program }: { program: Program }) {
+  const c = useColors();
+  if (program.cost_low == null || program.cost_high == null) return null;
+  const range = program.cost_low === program.cost_high ? usd(program.cost_low) : `${usd(program.cost_low)} to ${usd(program.cost_high)}`;
+  return (
+    <View style={[styles.cost, { backgroundColor: c.pitchSoft }]}>
+      <Text style={[styles.costLabel, { color: c.pitch }]}>Your estimated cost</Text>
+      <Text style={[styles.costValue, { color: c.text }]}>
+        {range}
+        <Text style={{ fontSize: 14, fontWeight: '500', color: c.muted }}> a year</Text>
+      </Text>
+      <Text style={{ color: c.muted, fontSize: 12 }}>
+        Full cost {usd(program.cost_of_attendance!)}. Based on your {program.sport === 'tennis' ? 'UTR and ' : ''}GPA; real offers vary.
+      </Text>
+    </View>
+  );
+}
+
 export function ProgramCard({ program }: { program: Program }) {
   return (
     <Card
@@ -80,6 +104,7 @@ export function ProgramCard({ program }: { program: Program }) {
       initials={initialsOf(program.school_name)}
       name={program.school_name}
       photo={program.photo_url}
+      extra={<CostEstimate program={program} />}
       meta={[program.division, program.conference, `${program.state}, USA`].filter(Boolean).join(' · ')}
       stats={[
         program.sport === 'tennis'
@@ -122,6 +147,9 @@ export function AthleteProfileCard({ athlete }: { athlete: AthleteCard }) {
 const styles = StyleSheet.create({
   card: { flex: 1, borderRadius: 22, borderWidth: 1, overflow: 'hidden' },
   hero: { flexBasis: '44%', minHeight: 150, justifyContent: 'flex-end', padding: Spacing.lg },
+  cost: { borderRadius: 14, padding: Spacing.md, gap: 2 },
+  costLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  costValue: { fontSize: 22, fontWeight: '800', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
   shade: { backgroundColor: 'rgba(0,0,0,0.35)' },
   tag: {
     position: 'absolute', top: 16, left: 16, color: '#fff', fontSize: 11, letterSpacing: 1,

@@ -49,6 +49,9 @@ create table public.programs (
   scholarship text,
   min_gpa numeric(3, 2),
   min_utr numeric(4, 2),
+  -- Yearly tuition, housing and fees in USD, and the most athletic aid the program usually gives.
+  cost_of_attendance int check (cost_of_attendance > 0),
+  max_athletic_pct int not null default 100 check (max_athletic_pct between 0 and 100),
   -- Tennis facility photo, or a campus photo when there is none.
   photo_url text check (photo_url ~ '^https://'),
   -- Coaches who sign up with a confirmed address on this domain are verified automatically.
@@ -126,6 +129,39 @@ create table public.reports (
 create function public.age_on(birth date, d date default current_date)
 returns int language sql immutable as $$
   select extract(year from age(d, birth))::int
+$$;
+
+-- Rough yearly cost to an athlete after aid, in USD, as a low-high range.
+-- Tennis: athletic aid grows with how far the athlete's UTR is above the program's minimum
+-- (25% at the minimum, +25% per full UTR point, up to the program's cap). Soccer has no
+-- comparable rating, so the range runs from full athletic aid to none.
+-- Academic merit aid: 20% off the rest for GPA 3.8+, 10% for 3.5+ (not at junior colleges).
+-- This is an estimate to help athletes compare schools, not an offer.
+create function public.estimate_cost(p_program uuid, p_athlete uuid)
+returns table (cost_low int, cost_high int) language sql stable security definer set search_path = public as $$
+  with x as (
+    select pr.cost_of_attendance as coa, pr.max_athletic_pct as cap, pr.division, pr.sport, pr.min_utr, a.utr, a.gpa
+      from programs pr, athletes a
+     where pr.id = p_program and a.user_id = p_athlete and pr.cost_of_attendance is not null
+  ), aid as (
+    select coa, division,
+           case
+             when sport = 'tennis' and utr is not null and utr >= coalesce(min_utr, 0)
+               then least(cap, 25 + 25 * floor(utr - coalesce(min_utr, utr))::int)
+             when sport = 'tennis' then 0
+             else cap
+           end as best_pct,
+           case
+             when sport = 'tennis' and utr is not null and utr >= coalesce(min_utr, 0)
+               then greatest(0, least(cap, 25 + 25 * floor(utr - coalesce(min_utr, utr))::int) - 25)
+             else 0
+           end as worst_pct,
+           case when division = 'NJCAA' then 0 when gpa >= 3.8 then 20 when gpa >= 3.5 then 10 else 0 end as merit_pct
+      from x
+  )
+  select (round(coa * (100 - best_pct) / 100.0 * (100 - merit_pct) / 100.0 / 500) * 500)::int,
+         (round(coa * (100 - worst_pct) / 100.0 * (100 - merit_pct) / 100.0 / 500) * 500)::int
+    from aid
 $$;
 
 -- An athlete is visible and can chat once they are 18 or a parent has linked their account.
@@ -262,10 +298,11 @@ end $$;
 create function public.get_program_deck(p_limit int default 20)
 returns table (
   id uuid, school_name text, division text, conference text, state text, sport public.sport,
-  about text, scholarship text, min_gpa numeric, min_utr numeric, photo_url text, liked_you boolean
+  about text, scholarship text, min_gpa numeric, min_utr numeric, photo_url text,
+  cost_of_attendance int, cost_low int, cost_high int, liked_you boolean
 ) language sql stable security definer set search_path = public as $$
   select pr.id, pr.school_name, pr.division, pr.conference, pr.state, pr.sport, pr.about, pr.scholarship,
-         pr.min_gpa, pr.min_utr, pr.photo_url,
+         pr.min_gpa, pr.min_utr, pr.photo_url, pr.cost_of_attendance, est.cost_low, est.cost_high,
          case when me.plan <> 'free' then exists (
            select 1 from swipes s where s.athlete_id = a.user_id and s.program_id = pr.id
               and s.direction = 'program_to_athlete' and s.liked)
@@ -273,6 +310,7 @@ returns table (
     from athletes a
     join profiles me on me.id = a.user_id
     join programs pr on pr.sport = a.sport
+    left join lateral public.estimate_cost(pr.id, a.user_id) est on true
    where a.user_id = auth.uid()
      and not exists (select 1 from swipes s where s.athlete_id = a.user_id and s.program_id = pr.id
                        and s.direction = 'athlete_to_program')
