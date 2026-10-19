@@ -16,9 +16,8 @@ export type Program = {
   division: string;
   state: string;
   sport: Sport;
-  needs: string | null;
+  about: string | null;
   scholarship: string | null;
-  min_gpa: number | null;
   liked_you: boolean | null;
 };
 

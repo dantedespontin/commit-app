@@ -73,10 +73,10 @@ export function ProgramCard({ program }: { program: Program }) {
       meta={`${program.division} · ${program.state}, USA`}
       stats={[
         [program.division.replace('NCAA ', ''), 'Division'],
-        [program.min_gpa ? program.min_gpa.toFixed(1) : 'None', 'Min GPA'],
+        [program.state, 'State'],
         [program.scholarship ? 'Yes' : 'Ask', 'Scholarships'],
       ]}
-      text={[program.needs, program.scholarship].filter(Boolean).join(' ')}
+      text={program.about}
       flag={program.liked_you ? { label: 'This program swiped yes on you' } : null}
     />
   );
