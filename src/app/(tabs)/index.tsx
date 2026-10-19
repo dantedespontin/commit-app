@@ -72,7 +72,13 @@ export default function Discover() {
       <View style={styles.header}>
         <Title>Discover</Title>
         <Body muted style={{ fontSize: 13 }}>
-          {profile?.role === 'coach' ? 'Free for coaches' : profile?.plan === 'starter' ? '15 swipes a day' : 'Unlimited swipes'}
+          {profile?.role === 'coach'
+            ? 'Free for coaches'
+            : profile?.plan === 'free'
+              ? '3 swipes a day'
+              : profile?.plan === 'starter'
+                ? '25 swipes a day'
+                : 'Unlimited swipes'}
         </Body>
       </View>
       {error && (

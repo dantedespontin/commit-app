@@ -18,8 +18,9 @@ create table public.profiles (
   full_name text not null check (char_length(full_name) between 2 and 80),
   birth_date date,
   country text check (char_length(country) <= 60),
-  -- Athlete plans: Starter €19.99, Pro €29.99, Elite €39.99 a month. Coaches and parents are free.
-  plan text not null default 'starter' check (plan in ('starter', 'pro', 'elite')),
+  -- Athlete plans: Free (3 swipes a day, no chat), Starter €19.99 (25 a day), Pro €29.99, Elite €39.99 a month.
+  -- Coaches and parents are free.
+  plan text not null default 'free' check (plan in ('free', 'starter', 'pro', 'elite')),
   created_at timestamptz not null default now()
 );
 
@@ -324,7 +325,7 @@ returns table (
 ) language sql stable security definer set search_path = public as $$
   select pr.id, pr.school_name, pr.division, pr.conference, pr.state, pr.sport, pr.about, pr.scholarship,
          pr.min_gpa, pr.min_utr, pr.max_scoring_avg, pr.photo_url, pr.cost_of_attendance, est.cost_low, est.cost_high,
-         case when me.plan <> 'starter' then exists (
+         case when me.plan in ('pro', 'elite') then exists (
            select 1 from swipes s where s.athlete_id = a.user_id and s.program_id = pr.id
               and s.direction = 'program_to_athlete' and s.liked)
          end
@@ -379,9 +380,9 @@ begin
 
   if v_role = 'athlete' then
     if not public.athlete_is_active(v_uid) then raise exception 'parent_approval_required'; end if;
-    if v_plan = 'starter' and (select count(*) from swipes where swiper_id = v_uid
-                              and created_at >= date_trunc('day', now())) >= 15 then
-      raise exception 'daily_limit';
+    if v_plan in ('free', 'starter') and (select count(*) from swipes where swiper_id = v_uid
+                              and created_at >= date_trunc('day', now())) >= (case v_plan when 'free' then 3 else 25 end) then
+      raise exception 'daily_limit' using hint = v_plan;
     end if;
     v_athlete := v_uid; v_program := p_target;
     v_dir := 'athlete_to_program'; v_other := 'program_to_athlete';
@@ -420,6 +421,7 @@ returns table (
          case
            when m.closed_at is not null then false
            when m.athlete_id = auth.uid() then public.athlete_is_active(m.athlete_id)
+             and (select plan from profiles where id = auth.uid()) <> 'free'
            when m.program_id = public.my_program() then
              coalesce(public.contact_unlock_date(m.athlete_id, m.program_id) <= current_date, true)
            else false
@@ -447,6 +449,8 @@ begin
 
   if m.athlete_id = auth.uid() then
     if not public.athlete_is_active(m.athlete_id) then raise exception 'parent_approval_required'; end if;
+    -- Free athletes can see their matches but need a paid plan to chat.
+    if (select plan from profiles where id = auth.uid()) = 'free' then raise exception 'upgrade_required'; end if;
   elsif m.program_id = public.my_program() then
     v_unlock := public.contact_unlock_date(m.athlete_id, m.program_id);
     if v_unlock is not null and v_unlock > current_date then

@@ -1,7 +1,8 @@
 // Turns error codes raised by the database functions into messages people can act on.
 const MESSAGES: Record<string, string> = {
   too_young: 'You need to be at least 13 to join Commit.',
-  daily_limit: "You've used today's 15 swipes on Starter. Come back tomorrow, or upgrade to Pro for unlimited swipes.",
+  daily_limit: "You've used today's swipes. Come back tomorrow, or upgrade for more: Starter gives 25 a day and Pro is unlimited.",
+  upgrade_required: 'Chat is part of Starter, Pro and Elite. Upgrade on your Profile tab to message this coach.',
   parent_approval_required: 'A parent needs to link to your account first. Share the code on your Profile tab with them.',
   coach_not_verified: "Your coach account isn't verified yet. Sign up with your school email address, or wait for our team to check it.",
   athlete_not_available: 'This athlete is no longer available.',

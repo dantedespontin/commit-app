@@ -91,6 +91,9 @@ export default function Chat() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90} style={{ flex: 1 }}>
         <View style={{ padding: Spacing.md, gap: Spacing.sm }}>
           {profile?.role === 'athlete' && <Banner>If you're under 18, your linked parent can read this chat.</Banner>}
+          {profile?.role === 'athlete' && profile.plan === 'free' && (
+            <Banner tone="warn">You matched! Upgrade to Starter on your Profile tab to message this coach.</Banner>
+          )}
           {profile?.role === 'parent' && <Banner>You can read this conversation. Only your child and the coach can write.</Banner>}
           {locked && (
             <Banner tone="warn">

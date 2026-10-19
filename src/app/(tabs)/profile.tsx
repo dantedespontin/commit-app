@@ -9,7 +9,8 @@ import { supabase } from '@/lib/supabase';
 
 // Athlete plans. Payments aren't connected yet, so new athletes start on Starter.
 const PLANS = [
-  { id: 'starter', name: 'Starter', price: '€19.99', perks: '15 swipes a day, profile and 1 highlight video.' },
+  { id: 'free', name: 'Free', price: '€0', perks: '3 swipes a day. You see your matches, but chatting needs a paid plan.' },
+  { id: 'starter', name: 'Starter', price: '€19.99', perks: '25 swipes a day, chat with your matches, profile and 1 highlight video.' },
   { id: 'pro', name: 'Pro', price: '€29.99', perks: 'Unlimited swipes, 5 videos, and see which programs swiped yes on you.' },
   { id: 'elite', name: 'Elite', price: '€39.99', perks: 'Everything in Pro, plus priority in coach decks and a weekly profile boost.' },
 ] as const;

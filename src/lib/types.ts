@@ -7,7 +7,7 @@ export type Profile = {
   full_name: string;
   birth_date: string | null;
   country: string | null;
-  plan: 'starter' | 'pro' | 'elite';
+  plan: 'free' | 'starter' | 'pro' | 'elite';
 };
 
 export type Program = {
