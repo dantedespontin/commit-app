@@ -18,7 +18,8 @@ create table public.profiles (
   full_name text not null check (char_length(full_name) between 2 and 80),
   birth_date date,
   country text check (char_length(country) <= 60),
-  plan text not null default 'free' check (plan in ('free', 'pro', 'elite')),
+  -- Athlete plans: Starter €19.99, Pro €29.99, Elite €39.99 a month. Coaches and parents are free.
+  plan text not null default 'starter' check (plan in ('starter', 'pro', 'elite')),
   created_at timestamptz not null default now()
 );
 
@@ -294,7 +295,7 @@ begin
   end if;
 end $$;
 
--- Programs for the signed-in athlete to swipe on. liked_you is only revealed on paid plans.
+-- Programs for the signed-in athlete to swipe on. liked_you is only revealed on Pro and Elite.
 create function public.get_program_deck(p_limit int default 20)
 returns table (
   id uuid, school_name text, division text, conference text, state text, sport public.sport,
@@ -303,7 +304,7 @@ returns table (
 ) language sql stable security definer set search_path = public as $$
   select pr.id, pr.school_name, pr.division, pr.conference, pr.state, pr.sport, pr.about, pr.scholarship,
          pr.min_gpa, pr.min_utr, pr.photo_url, pr.cost_of_attendance, est.cost_low, est.cost_high,
-         case when me.plan <> 'free' then exists (
+         case when me.plan <> 'starter' then exists (
            select 1 from swipes s where s.athlete_id = a.user_id and s.program_id = pr.id
               and s.direction = 'program_to_athlete' and s.liked)
          end
@@ -356,7 +357,7 @@ begin
 
   if v_role = 'athlete' then
     if not public.athlete_is_active(v_uid) then raise exception 'parent_approval_required'; end if;
-    if v_plan = 'free' and (select count(*) from swipes where swiper_id = v_uid
+    if v_plan = 'starter' and (select count(*) from swipes where swiper_id = v_uid
                               and created_at >= date_trunc('day', now())) >= 15 then
       raise exception 'daily_limit';
     end if;

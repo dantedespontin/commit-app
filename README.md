@@ -13,10 +13,10 @@ A swipe-to-match recruiting app. Athletes swipe on US college tennis and soccer 
   - Linked parents can read their child's chats
   - Coaches are verified automatically when they sign up with a confirmed email on their school's domain
   - NCAA Division I and II coaches can't send messages before the contact date for the athlete's class (June 15 after sophomore year); athletes can always write first. The dates live in the `contact_rules` table and need a compliance lawyer's review before launch.
-  - Free athletes get 15 swipes a day; coaches are free
+  - Athlete plans: Starter €19.99 (15 swipes a day), Pro €29.99 and Elite €39.99 a month; coaches are free
 - Report and unmatch on every chat
 
-Not built yet: payments (Pro plan), video uploads, push notifications and an admin console for verification and reports.
+Not built yet: payments for the athlete plans, video uploads, push notifications and an admin console for verification and reports.
 
 ## Run it
 

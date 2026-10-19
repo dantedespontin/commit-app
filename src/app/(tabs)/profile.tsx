@@ -7,6 +7,13 @@ import { useAuth } from '@/lib/auth';
 import { friendlyError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
+// Athlete plans. Payments aren't connected yet, so new athletes start on Starter.
+const PLANS = [
+  { id: 'starter', name: 'Starter', price: '€19.99', perks: '15 swipes a day, profile and 1 highlight video.' },
+  { id: 'pro', name: 'Pro', price: '€29.99', perks: 'Unlimited swipes, 5 videos, and see which programs swiped yes on you.' },
+  { id: 'elite', name: 'Elite', price: '€39.99', perks: 'Everything in Pro, plus priority in coach decks and a weekly profile boost.' },
+] as const;
+
 type AthleteRow = {
   user_id: string;
   sport: string;
@@ -99,16 +106,23 @@ export default function Profile() {
           </View>
         )}
 
-        {profile.role === 'athlete' && (
-          <View style={[styles.box, { backgroundColor: c.surface, borderColor: profile.plan === 'free' ? c.line : c.pitch }]}>
-            <Text style={[styles.boxTitle, { color: c.text }]}>{profile.plan === 'free' ? 'Free plan' : 'Pro plan'}</Text>
-            <Body muted>
-              {profile.plan === 'free'
-                ? '15 swipes a day. Pro adds unlimited swipes and shows which programs swiped yes on you.'
-                : 'Unlimited swipes, and you can see which programs swiped yes on you.'}
-            </Body>
-          </View>
-        )}
+        {profile.role === 'athlete' &&
+          PLANS.map((plan) => {
+            const current = plan.id === profile.plan;
+            return (
+              <View key={plan.id} style={[styles.box, { backgroundColor: c.surface, borderColor: current ? c.pitch : c.line }]}>
+                <View style={styles.planHead}>
+                  <Text style={[styles.boxTitle, { color: c.text }]}>{plan.name}</Text>
+                  <Text style={[styles.boxTitle, { color: c.text }]}>
+                    {plan.price}
+                    <Text style={{ color: c.muted, fontSize: 13, fontWeight: '500' }}> a month</Text>
+                  </Text>
+                </View>
+                <Body muted>{plan.perks}</Body>
+                {current && <Text style={{ color: c.pitch, fontWeight: '700', fontSize: 13 }}>Your plan</Text>}
+              </View>
+            );
+          })}
 
         {message && <Banner>{message}</Banner>}
         <Button variant="secondary" title="Sign out" onPress={() => supabase.auth.signOut()} />
@@ -121,5 +135,6 @@ const styles = StyleSheet.create({
   wrap: { padding: Spacing.lg, gap: Spacing.md, maxWidth: 560, width: '100%', alignSelf: 'center' },
   box: { borderWidth: 1, borderRadius: 18, padding: Spacing.lg, gap: Spacing.sm },
   boxTitle: { fontSize: 17, fontWeight: '700' },
+  planHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   code: { fontSize: 28, fontWeight: '800', letterSpacing: 4 },
 });
