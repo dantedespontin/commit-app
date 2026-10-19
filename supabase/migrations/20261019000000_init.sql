@@ -42,10 +42,15 @@ create table public.programs (
   id uuid primary key default gen_random_uuid(),
   school_name text not null,
   division text not null check (division in ('NCAA D1', 'NCAA D2', 'NCAA D3', 'NAIA', 'NJCAA')),
+  conference text,
   state text not null,
   sport public.sport not null,
   about text check (char_length(about) <= 300),
   scholarship text,
+  min_gpa numeric(3, 2),
+  min_utr numeric(4, 2),
+  -- Tennis facility photo, or a campus photo when there is none.
+  photo_url text check (photo_url ~ '^https://'),
   -- Coaches who sign up with a confirmed address on this domain are verified automatically.
   email_domain text not null,
   created_at timestamptz not null default now(),
@@ -256,10 +261,11 @@ end $$;
 -- Programs for the signed-in athlete to swipe on. liked_you is only revealed on paid plans.
 create function public.get_program_deck(p_limit int default 20)
 returns table (
-  id uuid, school_name text, division text, state text, sport public.sport,
-  about text, scholarship text, liked_you boolean
+  id uuid, school_name text, division text, conference text, state text, sport public.sport,
+  about text, scholarship text, min_gpa numeric, min_utr numeric, photo_url text, liked_you boolean
 ) language sql stable security definer set search_path = public as $$
-  select pr.id, pr.school_name, pr.division, pr.state, pr.sport, pr.about, pr.scholarship,
+  select pr.id, pr.school_name, pr.division, pr.conference, pr.state, pr.sport, pr.about, pr.scholarship,
+         pr.min_gpa, pr.min_utr, pr.photo_url,
          case when me.plan <> 'free' then exists (
            select 1 from swipes s where s.athlete_id = a.user_id and s.program_id = pr.id
               and s.direction = 'program_to_athlete' and s.liked)

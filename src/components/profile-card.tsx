@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SportColor, Spacing, useColors } from '@/constants/theme';
@@ -12,7 +13,9 @@ function Card({
   stats,
   text,
   flag,
+  photo,
 }: {
+  photo?: string | null;
   sport: Sport;
   initials: string;
   name: string;
@@ -25,6 +28,12 @@ function Card({
   return (
     <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.line }]}>
       <View style={[styles.hero, { backgroundColor: SportColor[sport] }]}>
+        {photo ? (
+          <>
+            <Image source={photo} contentFit="cover" style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors />
+            <View style={[StyleSheet.absoluteFill, styles.shade]} />
+          </>
+        ) : null}
         <Text style={styles.tag}>{sport.toUpperCase()}</Text>
         <View style={styles.crest}>
           <Text style={styles.crestText}>{initials}</Text>
@@ -36,7 +45,7 @@ function Card({
         <View style={styles.stats}>
           {stats.map(([value, label]) => (
             <View key={label} style={[styles.stat, { backgroundColor: c.background }]}>
-              <Text style={[styles.statValue, { color: c.text }]}>{value}</Text>
+              <Text numberOfLines={2} style={[styles.statValue, { color: c.text }]}>{value}</Text>
               <Text style={[styles.statLabel, { color: c.muted }]}>{label}</Text>
             </View>
           ))}
@@ -70,13 +79,16 @@ export function ProgramCard({ program }: { program: Program }) {
       sport={program.sport}
       initials={initialsOf(program.school_name)}
       name={program.school_name}
-      meta={`${program.division} · ${program.state}, USA`}
+      photo={program.photo_url}
+      meta={[program.division, program.conference, `${program.state}, USA`].filter(Boolean).join(' · ')}
       stats={[
-        [program.division.replace('NCAA ', ''), 'Division'],
-        [program.state, 'State'],
-        [program.scholarship ? 'Yes' : 'Ask', 'Scholarships'],
+        program.sport === 'tennis'
+          ? [program.min_utr ? `${program.min_utr}+` : 'Any', 'Min UTR']
+          : [program.division.replace('NCAA ', ''), 'Division'],
+        [program.min_gpa ? program.min_gpa.toFixed(1) : 'None', 'Min GPA'],
+        [program.conference ?? 'n/a', 'Conference'],
       ]}
-      text={program.about}
+      text={[program.about, program.scholarship].filter(Boolean).join(' · ')}
       flag={program.liked_you ? { label: 'This program swiped yes on you' } : null}
     />
   );
@@ -110,6 +122,7 @@ export function AthleteProfileCard({ athlete }: { athlete: AthleteCard }) {
 const styles = StyleSheet.create({
   card: { flex: 1, borderRadius: 22, borderWidth: 1, overflow: 'hidden' },
   hero: { flexBasis: '44%', minHeight: 150, justifyContent: 'flex-end', padding: Spacing.lg },
+  shade: { backgroundColor: 'rgba(0,0,0,0.35)' },
   tag: {
     position: 'absolute', top: 16, left: 16, color: '#fff', fontSize: 11, letterSpacing: 1,
     backgroundColor: 'rgba(0,0,0,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, overflow: 'hidden',
@@ -125,7 +138,7 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.lg, gap: Spacing.md },
   stats: { flexDirection: 'row', gap: Spacing.sm },
   stat: { flex: 1, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 10 },
-  statValue: { fontSize: 16, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  statValue: { fontSize: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
   statLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
   flag: { alignSelf: 'flex-start', fontSize: 12, fontWeight: '600', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
 });

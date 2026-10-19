@@ -14,10 +14,14 @@ export type Program = {
   id: string;
   school_name: string;
   division: string;
+  conference: string | null;
   state: string;
   sport: Sport;
   about: string | null;
   scholarship: string | null;
+  min_gpa: number | null;
+  min_utr: number | null;
+  photo_url: string | null;
   liked_you: boolean | null;
 };
 
